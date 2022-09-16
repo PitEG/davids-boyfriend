@@ -1,6 +1,7 @@
 import re
 import asyncio
 import os
+from multiprocessing import Process
 
 import mpv
 import pytube
@@ -49,11 +50,13 @@ def add_playlist(url):
     for s in songs:
         add_song(s)
 
-def play():
-    if len(playlist) < 1: return
-    # m.command('loadfile',playlist[0].url,'append-play')
-    m.play(playlist[0].url)
-    # m.play(playlist[0].url);
+def play(url):
+    # if len(playlist) < 1: return
+    m.command('loadfile',url,'append-play')
+    # m.play(playlist[0].url)
+
+# m.play('https://www.youtube.com/watch?v=F4_D07Y3oNk')
+# print('playing')
 
 # bot commands
 @bot.command(name='add')
@@ -74,19 +77,45 @@ async def command_add(ctx, *args):
 
 @bot.command(name='play')
 async def command_play(ctx):
-    # join voice channel
+    print('COMMAND: !davidplay')
+    # check if there are songs in playlist
+    if len(playlist) < 0: 
+        print('playlist is empty, returning')
+        return
+    # find voice channel
+    print('finding voice channel')
     voice_channel = ctx.message.author.voice.channel
     voice_client = ctx.guild.voice_client
+
+    # check if already in voice chat
     if (not voice_client):
         print('joining voice chat')
         voice_client = await voice_channel.connect()
         print('joined voice chat')
+    else:
+        print('already in voice chat')
+
+    # check if already playing
+    if voice_client.is_playing(): 
+        print('already playing, returning')
+        return
 
     # stream audio with mpv
-    play()
-    audio_source = discord.FFmpegOpusAudio('./david')
-    # replace after with a callback. it gets called when finished
+    print('launching backend')
+    m.play('https://www.youtube.com/watch?v=F4_D07Y3oNk')
+    await asyncio.sleep(2) # wait a bit so that we have time to buffer
+    print('playing audio')
+    audio_source = discord.FFmpegPCMAudio('david')
     voice_client.play(audio_source, after=None) 
+
+    # wait to finish and update playlist
+    m.wait_for_playback()
+    m.stop()
+    print('done')
+    await asyncio.sleep(2)
+    voice_client.stop()
+    del audio_source
+    print('stopping voice')
     pass
 
 @bot.command(name='pause')
