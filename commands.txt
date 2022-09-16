@@ -1,0 +1,3 @@
+mkfifo pipette
+mpv --o=pipette --of=nut --oac=pcm_s16le --vid=no "video"
+ffplay -nodisp pipette
