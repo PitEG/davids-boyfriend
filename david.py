@@ -16,9 +16,13 @@ from discord.ext import commands
 bot = commands.Bot(command_prefix='!david')
 
 # create mpv player
-m = mpv.Context()
-m.set_option('vid','no')
-m.initialize()
+# m = mpv.Context()
+# m.set_option('vid','no') # disables video
+# m.set_option('o','test') # output file
+# m.set_option('of','nut') # file format
+# m.set_option('oac','pcm_s16le') # codec
+m = mpv.MPV(ytdl=True,vid='no',o='test',of='nut',oac='pcm_s16le')
+print(m.option_info('o'))
 
 # playlist
 playlist = []
@@ -45,12 +49,9 @@ def add_playlist(url):
 
 def play():
     if len(playlist) < 1: return
-    m.command('loadfile',playlist[0].url,'append-play',
-            'o','test',
-            'of','nut',
-            'oac','pcm_s16le',
-            )
-
+    # m.command('loadfile',playlist[0].url,'append-play')
+    m.play(playlist[0].url)
+    # m.play(playlist[0].url);
 
 # bot commands
 @bot.command(name='add')
@@ -81,6 +82,9 @@ async def command_play(ctx):
 
     # stream audio with mpv
     play()
+    #audio_source = discord.FFmpegOpusAudio('./david')
+    # replace after with a callback. it gets called when finished
+    #voice_client.play(audio_source, after=None) 
     pass
 
 @bot.command(name='pause')

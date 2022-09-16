@@ -2,9 +2,9 @@
 david's boyfriend is a discord bot for playing music on discord servers
 
 # setup
-Depends on `pympv`, `pytube`, `discordpy` and `PyNaCl`. To install the dependencies with `pip`, run:
+Depends on `python mpv`, `pytube`, `discordpy` and `PyNaCl`. To install the dependencies with `pip`, run:
 
-`pip install pympv pytube discordpy PyNaCl`.
+`pip install python-mpv pytube discordpy PyNaCl`.
 
 Also, it depends on ffmpeg and mpv so you need to install that with your package manager. For example:
 
