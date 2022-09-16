@@ -1,5 +1,6 @@
 import re
 import asyncio
+import os
 
 import mpv
 import pytube
@@ -21,11 +22,12 @@ bot = commands.Bot(command_prefix='!david')
 # m.set_option('o','test') # output file
 # m.set_option('of','nut') # file format
 # m.set_option('oac','pcm_s16le') # codec
-m = mpv.MPV(ytdl=True,vid='no',o='test',of='nut',oac='pcm_s16le')
-print(m.option_info('o'))
+m = mpv.MPV(vid='no',o='david',of='nut',oac='pcm_s16le')
+# os.system('mpv --o=test --of=nut --oac=pcm_s16le --vid=no https://www.youtube.com/watch?v=F4_D07Y3oNk')
 
 # playlist
 playlist = []
+
 
 class Song:
     def __init__(self, url, title, duration):
@@ -82,9 +84,9 @@ async def command_play(ctx):
 
     # stream audio with mpv
     play()
-    #audio_source = discord.FFmpegOpusAudio('./david')
+    audio_source = discord.FFmpegOpusAudio('./david')
     # replace after with a callback. it gets called when finished
-    #voice_client.play(audio_source, after=None) 
+    voice_client.play(audio_source, after=None) 
     pass
 
 @bot.command(name='pause')
@@ -129,7 +131,7 @@ async def command_list(ctx):
         page = ""
         for e in entries:
             first_entry += 1
-            page += f'{first_entry}. {e.title} | {format_time(e.duration)}s\n';
+            page += f'{first_entry}. {e.title} | {format_time(e.duration)}\n';
         return page
 
     curr_page = 1
