@@ -2,7 +2,6 @@ import re
 import asyncio
 import os
 import time
-from multiprocessing import Process
 
 import pytube
 import discord
@@ -33,8 +32,13 @@ class Song:
         return f'{self.url} : {self.title} - {self.duration}s'
     
     def video_url(self):
+        song_info = None
         with youtube_dl.YoutubeDL() as ydl:
-            song_info = ydl.extract_info(self.url)
+            while song_info is None:
+                try:
+                    song_info = ydl.extract_info(self.url, download=False)
+                except:
+                    pass
         return song_info["formats"][0]["url"]
 
 def add_song(url):
@@ -48,18 +52,23 @@ def add_playlist(url):
     for s in songs:
         add_song(s)
 
-def play_next(voice_client):
+def play_next(ctx):
+    print('playing next')
+    voice_client = ctx.guild.voice_client
     if len(playlist) > 0:
         playlist.pop(0)
-    if len(playlist) > 0:
+    if len(playlist) > 0 and voice_client:
         play(voice_client, playlist[0])
 
-def play(voice_client, song):
-    if len(playlist) <= 0:
+def play(ctx, song):
+    if len(playlist) == 0:
         return
-    print('now playing:', song.title)
+    voice_client = ctx.guild.voice_client
+    if voice_client is None: return
+    voice_client.stop()
     audio_source = discord.FFmpegPCMAudio(song.video_url())
-    voice_client.play(audio_source)
+    voice_client.play(audio_source, after=lambda _:play_next(ctx))
+    print('now playing:', song.title)
 
 # bot commands
 @bot.command(name='add')
@@ -78,7 +87,7 @@ async def command_add(ctx, *args):
     print(playlist)
     pass
 
-@bot.command(name='play')
+@bot.command(name='play',aliases=['start'])
 async def command_play(ctx):
     print('COMMAND: !davidplay')
     # check if there are songs in playlist
@@ -105,26 +114,39 @@ async def command_play(ctx):
 
     # stream audio with mpv
     print('playing audio')
-    play(voice_client, playlist[0])
+    play(ctx, playlist[0])
     pass
 
 @bot.command(name='pause')
 async def command_pause(ctx):
     # pause stream from mpv
+    voice_client = ctx.guild.voice_client
+    if voice_client:
+        voice_client.pause()
     pass
 
-@bot.command(name='next')
+@bot.command(name='resume')
+async def command_resume(ctx):
+    # pause stream from mpv
+    voice_client = ctx.guild.voice_client
+    if voice_client:
+        voice_client.resume()
+
+@bot.command(name='next',aliases=['skip','n'])
 async def command_next(ctx):
     # remove the first thing in playlist
     # play next song
     voice_client = ctx.guild.voice_client
-    play_next(voice_client)
+    voice_client.stop() # this triggers the "after" callback
     pass
 
 @bot.command(name='clear')
 async def command_clear(ctx):
     # stop playing
+    voice_client = ctx.guild.voice_client
+    voice_client.stop()
     # clear playlist
+    playlist.clear()
     pass
 
 @bot.command(name='leave')
@@ -132,7 +154,7 @@ async def command_leave(ctx):
     if ctx.voice_client:
         await ctx.guild.voice_client.disconnect()
 
-@bot.command(name='list')
+@bot.command(name='list',aliases=['queue','q','l'])
 async def command_list(ctx):
     def format_time(secs : int):
         return f'{secs//60}:{secs%60}';
@@ -140,7 +162,7 @@ async def command_list(ctx):
     def check_valid_page(page_num):
         page_num -= 1
         first_entry = page_num * 10 # 10 entries per page
-        if first_entry >= len(playlist):
+        if first_entry >= len(playlist) or first_entry < 0:
             return False
         else:
             return True
