@@ -1,11 +1,12 @@
 import re
 import asyncio
 import os
+import time
 from multiprocessing import Process
 
-import mpv
 import pytube
 import discord
+import youtube_dl
 
 from pytube import Playlist
 from pytube import YouTube
@@ -15,20 +16,12 @@ from discord.player import AudioSource
 from discord.ext import commands
 
 # create bot
-bot = commands.Bot(command_prefix='!david')
-
-# create mpv player
-# m = mpv.Context()
-# m.set_option('vid','no') # disables video
-# m.set_option('o','test') # output file
-# m.set_option('of','nut') # file format
-# m.set_option('oac','pcm_s16le') # codec
-m = mpv.MPV(vid='no',o='david',of='nut',oac='pcm_s16le')
-# os.system('mpv --o=test --of=nut --oac=pcm_s16le --vid=no https://www.youtube.com/watch?v=F4_D07Y3oNk')
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix='!david', intents=intents)
 
 # playlist
 playlist = []
-
+voice_client = None
 
 class Song:
     def __init__(self, url, title, duration):
@@ -37,7 +30,12 @@ class Song:
         self.duration = duration
 
     def __repr__(self):
-        return f'{self.title} - {self.duration}s'
+        return f'{self.url} : {self.title} - {self.duration}s'
+    
+    def video_url(self):
+        with youtube_dl.YoutubeDL() as ydl:
+            song_info = ydl.extract_info(self.url)
+        return song_info["formats"][0]["url"]
 
 def add_song(url):
     yt = YouTube(url)
@@ -50,13 +48,18 @@ def add_playlist(url):
     for s in songs:
         add_song(s)
 
-def play(url):
-    # if len(playlist) < 1: return
-    m.command('loadfile',url,'append-play')
-    # m.play(playlist[0].url)
+def play_next(voice_client):
+    if len(playlist) > 0:
+        playlist.pop(0)
+    if len(playlist) > 0:
+        play(voice_client, playlist[0])
 
-# m.play('https://www.youtube.com/watch?v=F4_D07Y3oNk')
-# print('playing')
+def play(voice_client, song):
+    if len(playlist) <= 0:
+        return
+    print('now playing:', song.title)
+    audio_source = discord.FFmpegPCMAudio(song.video_url())
+    voice_client.play(audio_source)
 
 # bot commands
 @bot.command(name='add')
@@ -101,21 +104,8 @@ async def command_play(ctx):
         return
 
     # stream audio with mpv
-    print('launching backend')
-    m.play('https://www.youtube.com/watch?v=F4_D07Y3oNk')
-    await asyncio.sleep(2) # wait a bit so that we have time to buffer
     print('playing audio')
-    audio_source = discord.FFmpegPCMAudio('david')
-    voice_client.play(audio_source, after=None) 
-
-    # wait to finish and update playlist
-    m.wait_for_playback()
-    m.stop()
-    print('done')
-    await asyncio.sleep(2)
-    voice_client.stop()
-    del audio_source
-    print('stopping voice')
+    play(voice_client, playlist[0])
     pass
 
 @bot.command(name='pause')
@@ -127,6 +117,8 @@ async def command_pause(ctx):
 async def command_next(ctx):
     # remove the first thing in playlist
     # play next song
+    voice_client = ctx.guild.voice_client
+    play_next(voice_client)
     pass
 
 @bot.command(name='clear')
